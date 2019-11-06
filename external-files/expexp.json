@@ -1,0 +1,8 @@
+{"_id":{"$oid":"5dbfb8774691beb33f1737a6"},"empid":101,"empname":"harry","empsal":22334}
+{"_id":{"$oid":"5dbfb8774691beb33f1737a7"},"empid":104,"empname":"prakash","empsal":22345}
+{"_id":{"$oid":"5dbfb8774691beb33f1737a8"},"empid":102,"empname":"peter","empsal":12345}
+{"_id":{"$oid":"5dbfb8774691beb33f1737a9"},"empid":103,"empname":"sachin","empsal":23245}
+{"_id":{"$oid":"5dbfb8d362298d5dc4187f98"},"empid":102,"empname":"peter","empsal":12345}
+{"_id":{"$oid":"5dbfb8d362298d5dc4187f99"},"empid":101,"empname":"harry","empsal":22334}
+{"_id":{"$oid":"5dbfb8d362298d5dc4187f9a"},"empid":104,"empname":"prakash","empsal":22345}
+{"_id":{"$oid":"5dbfb8d362298d5dc4187f9b"},"empid":103,"empname":"sachin","empsal":23245}

@@ -1,0 +1,297 @@
+> show dbs 
+
+> db 
+
+> db.emps.insert({empid:101, empname:"Aju"}); 
+
+> db.emps.find(); -> db.emps.find({}); 
+
+db.emps.insert({empid:102,  empname:"Satya"}); 
+db.emps.insert({empid:103,  empname:"Sunitha"}); 
+db.emps.insert({empid:102,  empname:"Rick", email:"rick@gmail.com"}); 
+db.emps.insert({empid:102,  empname:"Sridhar", location:"Bengaluru"}); 
+db.emps.insert({_id:12345, empid:12345, empname:"Harry"}); 
+
+> db.emps.find().pretty(); 
+
+> db.emps.findOne(); 
+
+
+mongoimport --file ./employees.json --db sapdb --collection employees--port 27017 
+
+
+mongoexport --db sapdb --collection employees --out empsexp.csv  --type csv -f "empname,empsal"
+
+
+var itr=db.employees.find(); 
+
+
+while(itr.hasNext()){
+	var temp=itr.next();
+	
+	print(temp.empid +", " + temp.empname +", " + temp.empsal); 
+}
+
+
+-------------------------------------------------
+var itr=db.employees.find(); 
+
+
+while(itr.hasNext()){
+	var temp=itr.next();
+	
+	db.emp_fin2.insert({"empid":temp.empid , "empname":temp.empname.toUpperCase()}); 
+}
+
+
+
+
+
+db.createCollection("capColl", {capped:true, size:1024, max:5})
+
+db.capColl.insert({did:101, dname:"laptop"});
+db.capColl.insert({did:102, dname:"computer"});
+db.capColl.insert({did:103, dname:"mouse"});
+db.capColl.insert({did:104, dname:"keyboard"});
+
+
+db.capColl.insert({did:105, dname:"monitor"});
+
+
+
+
+db.<collName>.find(
+	{selection}, 
+	{projection}
+).sort,limit,skip 
+
+
+sort (key:value [1, -1] )
+limit (int)
+skip(int)
+
+
+
+db.employees.find({empid:101})
+
+> db.employees.find({}).sort({empname:1}); 
+
+> db.employees.find({}, {_id:0}).sort({empname:-1}).skip(2).limit(5);
+
+> db.employees.find({}, {_id:0}).sort({empname:-1}).limit(5);
+
+// and clause 
+> db.employee.find({empid:103, empname:"sachin"})
+
+
+x=10
+x="hi"
+x=34.5
+x=true 
+
+
+> db.employees.find({empid:{$gt:103}, empname:"prakash"})
+
+
+ db.employees.find({empid:{$gt:102}, empsal:{$gt:2000}}); 
+
+
+
+> db.employees.find({$or:
+	[
+		{empid:{$gt:103}}, 
+		{empname:"harry"}
+	]
+	}, {_id:0})
+
+
+--- update 
+
+
+update emp set 
+// by default 1 record 
+db.employee.update({empid:{$gt:102}}, {$set:{location:"bengaluru"}}); 
+
+// if you want to have multiple records updated the say multi:true 
+db.employees.update({empid:{$gt:102}}, {$set:{location:"bengaluru"}}, {multi:true}); 
+db.employees.update({empid:{$lte:102}}, {$set:{location:"new york"}}, {multi:true}); 
+
+
+all employee who are in bengaluru and their income is gt: 3456 or empid>103 
+
+
+db.employees.find(
+		{
+			location:'bengaluru', 
+				$or: [
+					{empsal:{$gt:3456}}, 
+					{empid:{$gt:103}}
+				]
+		}, 
+		{_id:0}
+	); 
+
+
+
+-- list all the employees who does not have dept 
+
+db.employees.find({dept:{$exists:true}}); 
+
+
+// like %% -> mongodb 
+
+
+sort 
+count
+limit
+skip 
+
+
+-- embedded document 
+
+db.embed.insert({
+	empid:101, 
+	empname:"Pritham", 
+	contact:{
+		personal:{
+			email:"pritham@pritham.com", 
+			contact:"+91 9944994499"
+		}, 
+		business: {
+			email:"pritham@sap.com", 
+			contact:"+1 703 432 3334"
+		}
+	}, 
+	location:"Bengaluru"
+})
+
+db.embed.insert({
+	empid:102, 
+	empname:"Sunitha", 
+	contact:{
+		personal:{
+			email:"Sunitha@pritham.com", 
+			contact:"+91 8844994499"
+		}, 
+		business: {
+			email:"sunitha@sap.com", 
+			contact:"+1 456 432 3334"
+		}
+	}, 
+	location:"Mysuru"
+})
+
+
+
+
+db.embed.find({"contact.personal.email":"Sunitha@pritham.com"}); 
+
+
+
+
+
+
+db.food.insert({name:"Burger", ratings:[6,7,9]})
+db.food.insert({name:"Dosa", ratings:[3,7,9,8]})
+db.food.insert({name:"Pav Bhaji", ratings:[9]})
+db.food.insert({name:"Idly", ratings:[7,8]})
+
+
+// exact search 
+db.food.find({ratings:[9]})
+
+// positional search 
+db.food.find({"ratings.0": 7})
+
+// any where search 
+db.food.find({ratings: 7})
+
+// conditional search 
+
+db.food.find({ratings:{$elemMatch:{$lt:7}}})
+
+
+
+
+
+
+db.testing.insert({
+	myarr:[
+		{foo:"bar"}, 
+		{"foo1":"bar1"}
+	], 
+	
+})
+
+db.testing.insert({
+	myarr:[
+		"audits2018":[
+			{foo:"bar"}, 
+			{"foo1":"bar1"}
+		], 
+		"audits2019":[
+			{foo:"bar"}, 
+			{"foo1":"bar1"}
+		]
+	], 
+	
+})
+
+
+db.testing.find({"myarr.foo1" : "bar1"}, {}); 
+
+
+
+db.employees.update({empid:1234}, {$set:{empname:"ajay", empsal:44332,}}, {upsert:true}); 
+
+
+
+db.employees.save({"_id" : ObjectId("5dbfe7a102c5d915ef16cf73"), empid:223, empname:"pooja h r ", location:"bengaluru"}); 
+
+
+
+CRUD 
+
+insert 
+update (multi, upsert)
+find (condition, or, and )
+save 
+remove 
+selection(condition), projection 
+
+
+db.emp_fin.remove({}); 
+
+
+db.emps.remove({empid:102}); 
+
+var itr=db.employees.find(); 
+
+while(itr.hasNext()){
+	printjson(itr.next()); 
+}
+
+
+
+var itr=db.employees.find(); 
+
+itr.forEach(printjson); 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,43 @@
+
+
+
+db.subjects.insert({"name":"physics", "semester":3, "level":"intermediate"}); 
+db.subjects.insert({"name":"chemistry","semester":4, "level":"advance"}); 
+
+
+
+
+
+db.students.insert(
+    {   "name":"surendra", 
+        "learning": {
+            "$ref":"subjects", 
+            "$id": ObjectId("5dc26630335604a3106d2f8e")
+        }, 
+    address: {
+        "house-no":123, 
+        "street":"halter ln", 
+        "city":"reston"
+    }
+})
+
+
+
+
+
+
+
+
+var student=db.students.findOne({"name":"surendra"});
+var dbref=student.learning
+
+-- this will give the reference object 
+dbref
+
+ db[dbref.$ref].findOne({"_id":(dbref.$id)})
+
+    
+
+
+
+

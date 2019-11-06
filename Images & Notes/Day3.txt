@@ -1,0 +1,332 @@
+impelmenting repl 
+
+
+mkdir rs1 rs2 rs3 rs4 
+
+
+mongod --replSet sap-repl --dbpath ./rs1 --port 27017 --oplogSize 64
+mongod --replSet sap-repl --dbpath ./rs2 --port 27018 --oplogSize 64
+mongod --replSet sap-repl --dbpath ./rs3 --port 27019 --oplogSize 64
+mongod --replSet sap-repl --dbpath ./rs4 --port 27020 --oplogSize 64
+
+
+-- now once the instances are up we have interconnect 
+
+
+> mongo --port 27017
+
+> cfg= {
+	_id:"sap-repl", 
+	members:[
+		{_id:0, host:"localhost:27017"}, 
+		{_id:1, host:"localhost:27018"},
+		{_id:2, host:"localhost:27019"},
+		{_id:3, host:"localhost:27020"}
+	]
+};
+
+
+> rs.initiate(cfg); 
+
+primary> db.emps.insert({empid:101, empname:"Naveen"});
+
+secondary > rs.slaveOk(); // to read the data 
+
+// on secondary you cannot write 
+
+
+---- fail over 
+
+primay:27017> use admin
+primay:27017> db.shutdownServer(); 
+
+
+copied from cfg=rs.conf(); 
+
+	{
+			"_id" : 0,
+			"host" : "localhost:27017",
+			"arbiterOnly" : false,
+			"buildIndexes" : true,
+			"hidden" : false,
+			"priority" : 1,
+			"tags" : {
+				
+			},
+			"slaveDelay" : NumberLong(0),
+			"votes" : 1
+		},
+
+cfg.members[0].priority=0
+cfg.members[0].slaveDelay=5; 
+
+
+> rs.reconfig(cfg); 
+
+
+--------------- to connect to other cluster from one------------------- 
+
+> help connect 
+
+    var ser17 = new Mongo('localhost:27017');
+    var ser17_sapdb = ser17.getDB("sapdb"); 
+    ser17_sapdb.emps.find(); -- will not work 
+    
+    ser17_sapdb.getMongo().setSlaveOk();
+		or 
+    ser17_sapdb.setSlaveOk();
+
+    ser17_sapdb.emps.find(); -- will  work     
+    
+    
+    
+    
+    var mydb = x.getDB('mydb');
+  or
+    var mydb = connect('host[:port]/mydb');
+
+------------------- end of replication------------------ 
+
+
+
+-- MongoDB Repl + Shard 
+
+create folders 
+
+shard0 - rs1 rs2 rs3 
+shard1 - rs1 rs2 rs3 
+shard2 - rs1 rs2 rs3 
+conf - shard0-config shard1-config shard2-config 
+
+
+
+
+
+
+> mongod --dbpath ./shard0/rs1 --port 37017 --replSet s0 --shardsvr (up)
+> mongod --dbpath ./shard0/rs2 --port 37018 --replSet s0 --shardsvr (up)
+> mongod --dbpath ./shard0/rs3 --port 37019 --replSet s0 --shardsvr (up)
+
+as of now it is cohisive 
+
+-- connect this repl set 
+
+> mongo --port 37017
+
+
+- 4 terminals 
+
+cfg= {
+	_id:"s0", 
+	members:[
+		{_id:0, host:"localhost:37017"}, 
+		{_id:1, host:"localhost:37018"},
+		{_id:2, host:"localhost:37019"}
+	]
+};
+
+PRIMARY -> localhost:37017 
+
+------------------------------------------------------------------------
+
+repl-set - s1 
+
+> mongod --dbpath ./shard1/rs1 --port 47017 --replSet s1 --shardsvr
+> mongod --dbpath ./shard1/rs2 --port 47018 --replSet s1 --shardsvr
+> mongod --dbpath ./shard1/rs3 --port 47019 --replSet s1 --shardsvr
+
+
+> mongo --port 47017
+
+
+
+> cfg= {
+	_id:"s1", 
+	members:[
+		{_id:0, host:"localhost:47017"}, 
+		{_id:1, host:"localhost:47018"},
+		{_id:2, host:"localhost:47019"}
+	]
+};
+
+> rs.status();
+
+PRIMARY - "localhost:47017" 
+
+
+
+---------------------------------------------------------------------------
+
+repl-set - s2 
+
+
+> mongod --dbpath ./shard2/rs1 --port 57017 --replSet s2 --shardsvr
+> mongod --dbpath ./shard2/rs2 --port 57018 --replSet s2 --shardsvr
+> mongod --dbpath ./shard2/rs3 --port 57019 --replSet s2 --shardsvr
+
+
+> mongo --port 57017
+
+
+cfg= {
+	_id:"s2", 
+	members:[
+		{_id:0, host:"localhost:57017"}, 
+		{_id:1, host:"localhost:57018"},
+		{_id:2, host:"localhost:57019"}
+	]
+};
+
+rs.initiate(cfg) 
+
+PRIMARY - "localhost:57017"
+---------------------------------------------------------
+--- configuring (config server)
+
+> mongod --dbpath ./config/conf-shard0 --port 58017 --replSet conf --configsvr 
+> mongod --dbpath ./config/conf-shard1 --port 58018 --replSet conf --configsvr 
+> mongod --dbpath ./config/conf-shard2 --port 58019 --replSet conf --configsvr 
+
+
+> mongo --port 58017 
+
+
+
+
+cfg= {
+	_id:"conf", 
+	configsvr:true, 
+	members:[
+		{_id:0, host:"localhost:58017"}, 
+		{_id:1, host:"localhost:58018"},
+		{_id:2, host:"localhost:58019"}
+	]
+};
+
+// documentation 
+ --configdb arg                        Connection string for communicating 
+                                        with config servers: <config replset 
+                                        name>/<host1:port>,<host2:port>,[...]
+
+-is a server 
+> mongos --configdb "conf/localhost:58017,localhost:58018,localhost:58019" --port 27200
+
+
+> mongo --port 27200
+
+
+-- to be noted from other shards 
+Primary - s0 localhost:37017 
+Primary - s1 localhost:47017
+Primary - s2 localhost:57017
+
+> db.adminCommand({addshard:"s0/" + "localhost:37017"})
+> db.adminCommand({addshard:"s1/" + "localhost:47017"})
+> db.adminCommand({addshard:"s2/" + "localhost:57017"})
+
+
+> db.adminCommand({enableSharding:"company"}); 
+> db.adminCommand({shardCollection:"company.emps", key:{emp_id:1}}); 
+
+> use company 
+
+
+for(var i=0;i<500000; i++){
+	db.emps.insert({emp_id:i, name:"sap-ariba"})
+}
+
+
+
+
+
+-- db ref 
+
+{
+	empid:101, 
+	address: ObjectId("1234")
+}
+
+
+
+db.address.insert({address: {
+		street:"halter ln", 
+		city :"reston"
+	}}); 
+	
+_id : ObjectId 
+
+
+
+--- to show working of DBREF 
+db.subjects.insert({"name":"physics", "semester":3, "level":"intermediate"}); 
+db.subjects.insert({"name":"chemistry","semester":4, "level":"advance"}); 
+
+
+db.students.insert(
+    {   "name":"surendra", 
+        "learning": {
+            "$ref":"subjects", 
+            "$id": ObjectId("5dc26630335604a3106d2f8e")
+        }, 
+    address: {
+        "house-no":123, 
+        "street":"halter ln", 
+        "city":"reston"
+    }
+})
+
+
+
+
+var student=db.students.findOne({"name":"surendra"});
+
+ var dbref=student.learning
+
+-- this will give the reference object 
+dbref
+
+ db[dbref.$ref].findOne({"_id":(dbref.$id)})
+
+    
+
+-------------- another way ---------------------
+
+
+ var dbref=db.students.findOne({"name":"surendra"}).learning
+ db[dbref.$ref].findOne({"_id":(dbref.$id)})
+
+
+
+
+
+
+
+
+
+
+
+
+
+https://docs.mongodb.com/manual/reference/database-references/
+
+https://docs.mongodb.com/manual/core/transactions/
+https://docs.mongodb.com/manual/reference/database-references/
+https://docs.mongodb.com/manual/tutorial/model-referenced-one-to-many-relationships-between-documents/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

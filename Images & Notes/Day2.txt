@@ -1,0 +1,327 @@
+Day 2 Notes 
+
+
+
+db.zipcodes.find({pop:{$gt:5000}}); 
+
+db.zipcodes.find({pop:{$gt:5000}}).explain("executionStats"); 
+
+
+db.zipcodes.createIndex({pop:1}); 
+
+
+db.zipcodes.createIndex({pop:1, state:1}); 
+db.zipcodes.createIndex({pop:-1, state:-1}); 
+
+
+
+db.zipcodes.createIndex({pop:1, state:1}); 
+db.zipcodes.createIndex({pop:1, state:1}); 
+
+
+
+db.zipcodes.find({pop:{$gt:5000}, state:'MA'}).hint({pop:-1, state:-1}); 
+
+
+
+-- unique index 
+db.employees.createIndex({empid:1}, {unique:true}); 
+
+
+db.embed.createIndex({empid:1}, {unique:true}); 
+
+db.embed.insert({empid:101}); 
+
+
+
+db.scores.insert({name:"newbie"})
+db.scores.insert({name:"harry", score:77})
+db.scores.insert({name:"peter", score:44})
+db.scores.insert({name:"kanchan", score:67})
+
+
+
+
+db.scores.createIndex({score:1}, {sparse:true}); 
+
+db.scores.find().sort({score:1});
+
+
+
+
+db.zipcodes.createIndex({loc:'2d', city:1});
+
+db.zipcodes.find({loc:{$near:[-67,40]}}).limit(20); 
+
+
+
+
+
+db.places.insert({name:'Oﬃce1', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[50.12345, 37.44322] }});
+db.places.insert({name:'Oﬃce2', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[51.125, 37.2] }});
+db.places.insert({name:'Oﬃce3', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[52.1345, 44.412] }});
+db.places.insert({name:'Oﬃce4', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[55.1, 56.4122] }});
+db.places.insert({name:'Oﬃce5', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[67.0, 75.44322] }});
+db.places.insert({name:'Oﬃce6', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[55.5, 55.44322] }});
+db.places.insert({name:'Oﬃce7', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[88.145, 36.42122] }});
+db.places.insert({name:'Oﬃce8', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[77.145, 77.1322] }});
+db.places.insert({name:'Oﬃce9', 'city':'Bengaluru', 'location':{"type":"Point",  "coordinates":[56.123, 88.44322] }});
+
+
+
+db.places.createIndex({'location':'2dsphere'})
+
+
+db.places.find({  location:{
+$near: {
+	$geometry: {  type:'Point',
+		coordinates:[50.66,50.443]
+	},
+	$maxDistance:2000000, 
+	$minDistance:40000
+	}
+}
+}).pretty()
+
+
+
+-- text search 
+
+db.sentence.insert({"words":"dog"});
+db.sentence.insert({"words":"dog cat"}); 
+db.sentence.insert({"words":"cat dog"}); 
+db.sentence.insert({"words":"dog  running"});  
+db.sentence.insert({"words":"dogs are cute"});
+db.sentence.insert({"words":"snouser is small dog"});
+db.sentence.insert({"words":"dog is dog"});
+
+
+db.sentence.find({words:"dogs"})
+
+db.sentence.createIndex({"words":"text"})
+
+
+
+db.sentence.find({$text:{$search:'snouser.'}})
+
+
+
+
+
+db.sentence.find({
+	$text:{
+		$search:'hello cat & dog'
+	}
+	}, {score:{
+			$meta:'textScore'
+	}
+		}).sort({score:{$meta:'textScore'}})
+
+
+
+empid:101, income:100 
+empid:101, income:200 
+empid:102, income:100 
+empid:103, income:100 
+empid:103, income:400 
+
+
+
+
+101 , [100, 200]
+102, [100]
+103, [100, 400]
+
+
+
+db.zipcodes.aggregate( [
+	{ $group: { _id: "$state",totalPop: { $sum: "$pop" } } },
+	{ $match: { totalPop: { $gte: 10*1000*1000 } } }
+] )
+
+
+
+db.zipcodes.aggregate( [
+	{ $group: 
+		{ _id: { state: "$state", city: "$city" }, 
+			pop: { $sum: "$pop" } } }, 
+	{ $group: 
+		{ _id: "$_id.state", avgCityPop: { $avg:"$pop" } }
+ }] )
+
+
+-- to get least and most population by city of each state 
+
+
+
+db.zipcodes.aggregate( [
+	{ 
+		$group:{
+			_id: { state: "$state", city: "$city" },  pop: { $sum: "$pop" }
+		}
+	},
+	{ $sort: { pop: 1 } },
+	{ $group:
+		{
+			_id : "$_id.state",
+			biggestCity:  { $last:"$_id.city" },
+			biggestPop:  {$last:"$pop"}, 
+			smallestCity:   { $first:"$_id.city" },
+			smallestPop:{$first:"$pop"}
+		}
+	}
+]);
+
+
+
+
+
+-- map reduce 
+db.garments.insert({color:'blue', quantity:4}); 
+db.garments.insert({color:'green', quantity:10}); 
+db.garments.insert({color:'blue', quantity:20}); 
+db.garments.insert({color:'white', quantity:2}); 
+db.garments.insert({color:'white', quantity:100}); 
+
+emit 
+key blue- [4, 20], green [10], white  [2,100]
+
+emit 
+
+db.garments.mapReduce(myMap, myReducer, {out : "something"}); 
+
+myMap=function(){
+	emit(this.color, this.quantity)
+}
+
+myReducer=function(key, values){
+	var sum=0;
+	for(var i=0; i<values.length; i++){
+		 sum += values[i];
+	}
+return sum;
+}
+
+
+
+
+
+
+db.getProfilingStatus();
+{ "was" : 0, "slowms" : 100, "sampleRate" : 1 }
+> 
+> 
+> show profile
+db.system.profile is empty
+Use db.setProfilingLevel(2) will enable profiling
+Use db.system.profile.find() to show raw profile entries
+> 
+
+
+
+
+
+-- from the profile to get the records who is running slower than 1 mills 
+
+>  db.system.profile.find({mills:{$lt:1}}, {keysExamined:1, docsExamined:1}).pretty();
+
+
+db.system.profile.stats();
+
+
+db.system.profile.drop(); 
+
+
+
+
+-- mongostat, mongotop 
+
+for(var i=0;i<10000000;i++){
+	db.temp.insert({"idval":i, name:"SAP ARIBA"}); 
+}
+
+
+
+SQL - mongodb
+https://docs.mongodb.com/manual/reference/sql-comparison/
+
+All methods handy 
+https://docs.mongodb.com/manual/reference/method/
+
+
+https://docs.mongodb.com/manual/release-notes/4.2/#general-improvements
+
+
+
+
+db.createUser( {
+   user:"ariba123",
+   pwd: passwordPrompt(), 
+   roles:[ { role: "readWrite", db:"sapdb"} ]
+} )
+
+
+
+
+
+--security 
+
+
+use admin; 
+
+db.createUser(
+{
+	user: "myUserAdmin",  pwd: "abc123",
+	roles: [ { role: "userAdminAnyDatabase", db:"admin"}]
+	}
+)
+
+
+when you login to mongo 
+
+> mongo <enter> 
+
+> use admin 
+
+> db.auth("myUserAdmin", "abc123"); 
+
+
+
+
+db.emps.createIndex({empid:1}, {name:"myindex"})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
